@@ -25,11 +25,10 @@ function AppContent() {
   const isDark = resolvedTheme === "dark";
 
   const { identity, isInitializing, clear } = useInternetIdentity();
-  const { data: profile, isLoading: profileLoading } = useCallerProfile();
+  const { data: profile, isFetching: profileFetching } = useCallerProfile();
 
   const [currentPage, setCurrentPage] = useState<Page>("dashboard");
 
-  // Restore page from hash
   useEffect(() => {
     const hash = window.location.hash.replace("#", "");
     const validPages: Page[] = [
@@ -45,14 +44,10 @@ function AppContent() {
       "reports",
       "settings",
     ];
-    if (validPages.includes(hash as Page)) {
-      setCurrentPage(hash as Page);
-    }
+    if (validPages.includes(hash as Page)) setCurrentPage(hash as Page);
     const handler = () => {
       const h = window.location.hash.replace("#", "");
-      if (validPages.includes(h as Page)) {
-        setCurrentPage(h as Page);
-      }
+      if (validPages.includes(h as Page)) setCurrentPage(h as Page);
     };
     window.addEventListener("hashchange", handler);
     return () => window.removeEventListener("hashchange", handler);
@@ -71,8 +66,8 @@ function AppContent() {
 
   const toggleTheme = () => setTheme(isDark ? "light" : "dark");
 
-  // Loading state
-  if (isInitializing || profileLoading) {
+  // Only show loading while initializing, or while actively fetching profile (after login)
+  if (isInitializing || (!!identity && profileFetching)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
@@ -83,12 +78,10 @@ function AppContent() {
     );
   }
 
-  // Not logged in or no profile: show login
   if (!identity || !profile) {
     return <Login isDark={isDark} onToggleTheme={toggleTheme} />;
   }
 
-  // Role-based page guard
   const role = profile.appRole;
   const roleGuard = (): Page => {
     const restricted: Record<Page, AppRole[]> = {
