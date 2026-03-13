@@ -14,6 +14,7 @@ export type AppRole = { 'Auditor' : null } |
   { 'Admin' : null } |
   { 'Manager' : null } |
   { 'Salesman' : null };
+export interface AppUser { 'username' : string, 'name' : string, 'appRole' : AppRole }
 export interface CreditNote {
   'id' : string,
   'linkedInvoiceId' : string,
@@ -201,6 +202,13 @@ export interface _SERVICE {
   >,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  'changeAppUserPassword' : ActorMethod<[string, string, string], boolean>,
+  'createAppUser' : ActorMethod<[string, string, string, AppRole], boolean>,
+  'deleteAppUser' : ActorMethod<[string], boolean>,
+  'isFirstRun' : ActorMethod<[], boolean>,
+  'listAppUsers' : ActorMethod<[], Array<AppUser>>,
+  'loginWithPassword' : ActorMethod<[string, string], [] | [{ 'name' : string, 'appRole' : AppRole }]>,
+  'updateAppUser' : ActorMethod<[string, string, AppRole], boolean>,
   'listCreditNotes' : ActorMethod<[], Array<CreditNote>>,
   'listDebitNotes' : ActorMethod<[], Array<DebitNote>>,
   'listExpenses' : ActorMethod<[], Array<Expense>>,

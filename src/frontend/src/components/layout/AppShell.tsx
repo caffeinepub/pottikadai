@@ -41,7 +41,6 @@ import {
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { AppRole } from "../../backend.d";
-import type { UserProfile } from "../../backend.d";
 
 type Page =
   | "dashboard"
@@ -55,6 +54,11 @@ type Page =
   | "invoice-designer"
   | "reports"
   | "settings";
+
+interface UserProfileLike {
+  name: string;
+  appRole: AppRole;
+}
 
 interface NavItem {
   id: Page;
@@ -147,7 +151,7 @@ interface AppShellProps {
   children: React.ReactNode;
   currentPage: Page;
   onNavigate: (page: Page) => void;
-  profile: UserProfile | null;
+  profile: UserProfileLike | null;
   isDark: boolean;
   onToggleTheme: () => void;
   onLogout: () => void;

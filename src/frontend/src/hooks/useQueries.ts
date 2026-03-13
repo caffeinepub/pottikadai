@@ -1,13 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
+  AppUser,
   Expense,
   InvoiceTemplate,
   Party,
   Product,
   PurchaseBill,
   SaleInvoice,
-  UserProfile,
 } from "../backend.d";
+import type { AppRole } from "../backend.d";
 import { useActor } from "./useActor";
 
 const toTime = (date: Date): bigint =>
@@ -185,21 +186,93 @@ export function useProfitLoss(startDate: Date, endDate: Date) {
   });
 }
 
-export function useCallerProfile() {
+export function useLogin() {
+  const { actor } = useActor();
+  return useMutation({
+    mutationFn: async ({
+      username,
+      password,
+    }: { username: string; password: string }) => {
+      if (!actor) throw new Error("Not connected");
+      const a = actor as any;
+      const result = await a.loginWithPassword(username, password);
+      if (!result) throw new Error("Invalid username or password");
+      return result as { name: string; appRole: AppRole };
+    },
+  });
+}
+
+export function useAppUsers() {
   const { actor, isFetching } = useActor();
-  return useQuery<UserProfile | null>({
-    queryKey: ["caller-profile"],
-    queryFn: async () => (actor ? actor.getCallerUserProfile() : null),
+  return useQuery<AppUser[]>({
+    queryKey: ["app-users"],
+    queryFn: async () => {
+      if (!actor) return [];
+      const a = actor as any;
+      return a.listAppUsers() as Promise<AppUser[]>;
+    },
     enabled: !!actor && !isFetching,
   });
 }
 
-export function useSaveCallerProfile() {
+export function useCreateAppUser() {
   const { actor } = useActor();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (profile: UserProfile) => actor!.saveCallerUserProfile(profile),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["caller-profile"] }),
+    mutationFn: ({
+      username,
+      password,
+      name,
+      appRole,
+    }: {
+      username: string;
+      password: string;
+      name: string;
+      appRole: AppRole;
+    }) => {
+      const a = actor as any;
+      return a.createAppUser(
+        username,
+        password,
+        name,
+        appRole,
+      ) as Promise<boolean>;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["app-users"] }),
+  });
+}
+
+export function useChangePassword() {
+  const { actor } = useActor();
+  return useMutation({
+    mutationFn: ({
+      username,
+      oldPassword,
+      newPassword,
+    }: {
+      username: string;
+      oldPassword: string;
+      newPassword: string;
+    }) => {
+      const a = actor as any;
+      return a.changeAppUserPassword(
+        username,
+        oldPassword,
+        newPassword,
+      ) as Promise<boolean>;
+    },
+  });
+}
+
+export function useDeleteAppUser() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (username: string) => {
+      const a = actor as any;
+      return a.deleteAppUser(username) as Promise<boolean>;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["app-users"] }),
   });
 }
 

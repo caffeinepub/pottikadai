@@ -206,6 +206,11 @@ export enum AppRole {
     Manager = "Manager",
     Salesman = "Salesman"
 }
+export interface AppUser {
+    username: string;
+    name: string;
+    appRole: AppRole;
+}
 export enum UserRole {
     admin = "admin",
     user = "user",
@@ -278,6 +283,13 @@ export interface backendInterface {
     }>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
+    isFirstRun(): Promise<boolean>;
+    loginWithPassword(username: string, password: string): Promise<{ name: string; appRole: AppRole } | null>;
+    createAppUser(username: string, password: string, name: string, appRole: AppRole): Promise<boolean>;
+    changeAppUserPassword(username: string, oldPassword: string, newPassword: string): Promise<boolean>;
+    updateAppUser(username: string, name: string, appRole: AppRole): Promise<boolean>;
+    deleteAppUser(username: string): Promise<boolean>;
+    listAppUsers(): Promise<Array<AppUser>>;
     listCreditNotes(): Promise<Array<CreditNote>>;
     listDebitNotes(): Promise<Array<DebitNote>>;
     listExpenses(): Promise<Array<Expense>>;
@@ -1122,7 +1134,107 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+
+    async isFirstRun(): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.isFirstRun();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.isFirstRun();
+            return result;
+        }
+    }
+    async loginWithPassword(arg0: string, arg1: string): Promise<{ name: string; appRole: AppRole } | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.loginWithPassword(arg0, arg1);
+                return result.length === 0 ? null : { name: result[0].name, appRole: from_candid_AppRole_n19(this._uploadFile, this._downloadFile, result[0].appRole) };
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.loginWithPassword(arg0, arg1);
+            return result.length === 0 ? null : { name: result[0].name, appRole: from_candid_AppRole_n19(this._uploadFile, this._downloadFile, result[0].appRole) };
+        }
+    }
+    async createAppUser(arg0: string, arg1: string, arg2: string, arg3: AppRole): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.createAppUser(arg0, arg1, arg2, to_candid_AppRole_n38(this._uploadFile, this._downloadFile, arg3));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.createAppUser(arg0, arg1, arg2, to_candid_AppRole_n38(this._uploadFile, this._downloadFile, arg3));
+            return result;
+        }
+    }
+    async changeAppUserPassword(arg0: string, arg1: string, arg2: string): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.changeAppUserPassword(arg0, arg1, arg2);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.changeAppUserPassword(arg0, arg1, arg2);
+            return result;
+        }
+    }
+    async updateAppUser(arg0: string, arg1: string, arg2: AppRole): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateAppUser(arg0, arg1, to_candid_AppRole_n38(this._uploadFile, this._downloadFile, arg2));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateAppUser(arg0, arg1, to_candid_AppRole_n38(this._uploadFile, this._downloadFile, arg2));
+            return result;
+        }
+    }
+    async deleteAppUser(arg0: string): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteAppUser(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteAppUser(arg0);
+            return result;
+        }
+    }
+    async listAppUsers(): Promise<Array<AppUser>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.listAppUsers();
+                return result.map((u: any) => ({ username: u.username, name: u.name, appRole: from_candid_AppRole_n19(this._uploadFile, this._downloadFile, u.appRole) }));
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.listAppUsers();
+            return result.map((u: any) => ({ username: u.username, name: u.name, appRole: from_candid_AppRole_n19(this._uploadFile, this._downloadFile, u.appRole) }));
+        }
+    }
 }
+
 function from_candid_AppRole_n19(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _AppRole): AppRole {
     return from_candid_variant_n20(_uploadFile, _downloadFile, value);
 }

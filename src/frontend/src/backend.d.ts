@@ -103,9 +103,10 @@ export interface Product {
     category: string;
     salePrice: number;
 }
-export interface UserProfile {
-    appRole: AppRole;
+export interface AppUser {
+    username: string;
     name: string;
+    appRole: AppRole;
 }
 export enum AppRole {
     Auditor = "Auditor",
@@ -128,7 +129,20 @@ export enum Variant_customer_vendor {
     vendor = "vendor"
 }
 export interface backendInterface {
+    // Auth
+    isFirstRun(): Promise<boolean>;
+    loginWithPassword(username: string, password: string): Promise<{ name: string; appRole: AppRole } | null>;
+    createAppUser(username: string, password: string, name: string, appRole: AppRole): Promise<boolean>;
+    changeAppUserPassword(username: string, oldPassword: string, newPassword: string): Promise<boolean>;
+    updateAppUser(username: string, name: string, appRole: AppRole): Promise<boolean>;
+    deleteAppUser(username: string): Promise<boolean>;
+    listAppUsers(): Promise<Array<AppUser>>;
+    // Authorization compat
+    _initializeAccessControlWithSecret(secret: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    getCallerUserRole(): Promise<UserRole>;
+    isCallerAdmin(): Promise<boolean>;
+    // Data
     clearData(): Promise<void>;
     closePOSSession(id: string, closingCash: number): Promise<void>;
     createCreditNote(note: CreditNote): Promise<void>;
@@ -141,43 +155,18 @@ export interface backendInterface {
     createSaleInvoice(invoice: SaleInvoice): Promise<void>;
     deleteParty(id: string): Promise<void>;
     deleteProduct(id: string): Promise<void>;
-    getCallerUserProfile(): Promise<UserProfile | null>;
-    getCallerUserRole(): Promise<UserRole>;
     getCurrentPOSSession(): Promise<POSSession | null>;
-    getDailySalesSummary(date: Time): Promise<{
-        invoiceCount: bigint;
-        totalSales: number;
-    }>;
+    getDailySalesSummary(date: Time): Promise<{ invoiceCount: bigint; totalSales: number }>;
     getDefaultTemplate(): Promise<InvoiceTemplate | null>;
-    getExpenseSummary(startDate: Time, endDate: Time): Promise<Array<{
-        total: number;
-        category: string;
-    }>>;
-    getInventoryReport(): Promise<Array<{
-        value: number;
-        product: Product;
-    }>>;
+    getExpenseSummary(startDate: Time, endDate: Time): Promise<Array<{ total: number; category: string }>>;
+    getInventoryReport(): Promise<Array<{ value: number; product: Product }>>;
     getParty(id: string): Promise<Party | null>;
-    getPartyLedger(partyId: string): Promise<{
-        invoices: Array<SaleInvoice>;
-        bills: Array<PurchaseBill>;
-        party?: Party;
-    }>;
+    getPartyLedger(partyId: string): Promise<{ invoices: Array<SaleInvoice>; bills: Array<PurchaseBill>; party?: Party }>;
     getProduct(id: string): Promise<Product>;
-    getProfitLoss(startDate: Time, endDate: Time): Promise<{
-        revenue: number;
-        cost: number;
-        expenses: number;
-        profit: number;
-    }>;
+    getProfitLoss(startDate: Time, endDate: Time): Promise<{ revenue: number; cost: number; expenses: number; profit: number }>;
     getPurchaseBill(id: string): Promise<PurchaseBill | null>;
     getSaleInvoice(id: string): Promise<SaleInvoice>;
-    getSalesSummary(startDate: Time, endDate: Time): Promise<{
-        invoiceCount: bigint;
-        totalSales: number;
-    }>;
-    getUserProfile(user: Principal): Promise<UserProfile | null>;
-    isCallerAdmin(): Promise<boolean>;
+    getSalesSummary(startDate: Time, endDate: Time): Promise<{ invoiceCount: bigint; totalSales: number }>;
     listCreditNotes(): Promise<Array<CreditNote>>;
     listDebitNotes(): Promise<Array<DebitNote>>;
     listExpenses(): Promise<Array<Expense>>;
@@ -190,7 +179,6 @@ export interface backendInterface {
     listSaleInvoices(): Promise<Array<SaleInvoice>>;
     listSaleInvoicesByParty(partyId: string): Promise<Array<SaleInvoice>>;
     openPOSSession(session: POSSession): Promise<void>;
-    saveCallerUserProfile(profile: UserProfile): Promise<void>;
     setDefaultTemplate(id: string): Promise<void>;
     updateBalance(partyId: string, newBalance: number): Promise<void>;
     updateInvoiceTemplate(template: InvoiceTemplate): Promise<void>;

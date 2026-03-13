@@ -3,10 +3,11 @@ import { Loader2 } from "lucide-react";
 import { ThemeProvider, useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { AppRole } from "./backend.d";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { AppShell } from "./components/layout/AppShell";
 import type { Page } from "./components/layout/AppShell";
-import { useInternetIdentity } from "./hooks/useInternetIdentity";
-import { useCallerProfile } from "./hooks/useQueries";
+import { useActor } from "./hooks/useActor";
+import { useAppSession } from "./hooks/useAppSession";
 import { Accounting } from "./pages/Accounting";
 import { Dashboard } from "./pages/Dashboard";
 import { Expenses } from "./pages/Expenses";
@@ -24,8 +25,8 @@ function AppContent() {
   const { resolvedTheme, setTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
 
-  const { identity, isInitializing, clear } = useInternetIdentity();
-  const { data: profile, isFetching: profileFetching } = useCallerProfile();
+  const { session, logout } = useAppSession();
+  const { isFetching: actorFetching } = useActor();
 
   const [currentPage, setCurrentPage] = useState<Page>("dashboard");
 
@@ -59,15 +60,14 @@ function AppContent() {
   };
 
   const handleLogout = () => {
-    clear();
+    logout();
     setCurrentPage("dashboard");
     window.location.hash = "";
   };
 
   const toggleTheme = () => setTheme(isDark ? "light" : "dark");
 
-  // Only show loading while initializing, or while actively fetching profile (after login)
-  if (isInitializing || (!!identity && profileFetching)) {
+  if (actorFetching) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
@@ -78,11 +78,11 @@ function AppContent() {
     );
   }
 
-  if (!identity || !profile) {
+  if (!session) {
     return <Login isDark={isDark} onToggleTheme={toggleTheme} />;
   }
 
-  const role = profile.appRole;
+  const role = session.appRole;
   const roleGuard = (): Page => {
     const restricted: Record<Page, AppRole[]> = {
       dashboard: [
@@ -130,12 +130,12 @@ function AppContent() {
     <AppShell
       currentPage={safePage}
       onNavigate={navigate}
-      profile={profile}
+      profile={{ name: session.name, appRole: session.appRole }}
       isDark={isDark}
       onToggleTheme={toggleTheme}
       onLogout={handleLogout}
     >
-      {pageComponents[safePage]}
+      <ErrorBoundary>{pageComponents[safePage]}</ErrorBoundary>
     </AppShell>
   );
 }
