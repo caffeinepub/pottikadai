@@ -1,0 +1,171 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'BricolageGrotesque';
+  src: url('/assets/fonts/BricolageGrotesque.woff2') format('woff2');
+  font-weight: 200 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'PlusJakartaSans';
+  src: url('/assets/fonts/PlusJakartaSans.woff2') format('woff2');
+  font-weight: 300 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrainsMono';
+  src: url('/assets/fonts/JetBrainsMono.woff2') format('woff2');
+  font-weight: 300 700;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+    --background: 0.97 0.006 255;
+    --foreground: 0.15 0.025 255;
+    --card: 1 0 0;
+    --card-foreground: 0.15 0.025 255;
+    --popover: 1 0 0;
+    --popover-foreground: 0.15 0.025 255;
+    --primary: 0.62 0.17 195;
+    --primary-foreground: 0.98 0 0;
+    --secondary: 0.93 0.01 255;
+    --secondary-foreground: 0.20 0.025 255;
+    --muted: 0.93 0.01 255;
+    --muted-foreground: 0.50 0.02 255;
+    --accent: 0.72 0.17 55;
+    --accent-foreground: 0.12 0.02 55;
+    --destructive: 0.60 0.22 25;
+    --destructive-foreground: 0.98 0 0;
+    --border: 0.88 0.01 255;
+    --input: 0.88 0.01 255;
+    --ring: 0.62 0.17 195;
+    --chart-1: 0.62 0.17 195;
+    --chart-2: 0.72 0.17 55;
+    --chart-3: 0.65 0.20 145;
+    --chart-4: 0.70 0.18 310;
+    --chart-5: 0.65 0.22 25;
+    --sidebar: 0.12 0.03 255;
+    --sidebar-foreground: 0.92 0.01 255;
+    --sidebar-primary: 0.70 0.16 195;
+    --sidebar-primary-foreground: 0.12 0.03 255;
+    --sidebar-accent: 0.20 0.04 255;
+    --sidebar-accent-foreground: 0.92 0.01 255;
+    --sidebar-border: 0.22 0.03 255;
+    --sidebar-ring: 0.70 0.16 195;
+    --teal: 0.70 0.16 195;
+    --amber: 0.78 0.17 55;
+    --success: 0.65 0.18 145;
+  }
+
+  .dark {
+    --background: 0.12 0.025 255;
+    --foreground: 0.92 0.01 255;
+    --card: 0.17 0.03 255;
+    --card-foreground: 0.92 0.01 255;
+    --popover: 0.20 0.03 255;
+    --popover-foreground: 0.92 0.01 255;
+    --primary: 0.70 0.16 195;
+    --primary-foreground: 0.10 0.025 255;
+    --secondary: 0.22 0.03 255;
+    --secondary-foreground: 0.92 0.01 255;
+    --muted: 0.22 0.03 255;
+    --muted-foreground: 0.55 0.02 255;
+    --accent: 0.78 0.17 55;
+    --accent-foreground: 0.12 0.02 55;
+    --destructive: 0.65 0.22 25;
+    --destructive-foreground: 0.12 0.025 255;
+    --border: 0.25 0.03 255;
+    --input: 0.22 0.03 255;
+    --ring: 0.70 0.16 195;
+    --chart-1: 0.70 0.16 195;
+    --chart-2: 0.78 0.17 55;
+    --chart-3: 0.65 0.20 145;
+    --chart-4: 0.70 0.18 310;
+    --chart-5: 0.65 0.22 25;
+    --sidebar: 0.09 0.025 255;
+    --sidebar-foreground: 0.92 0.01 255;
+    --sidebar-primary: 0.70 0.16 195;
+    --sidebar-primary-foreground: 0.09 0.025 255;
+    --sidebar-accent: 0.17 0.03 255;
+    --sidebar-accent-foreground: 0.92 0.01 255;
+    --sidebar-border: 0.22 0.03 255;
+    --sidebar-ring: 0.70 0.16 195;
+    --teal: 0.70 0.16 195;
+    --amber: 0.78 0.17 55;
+    --success: 0.65 0.18 145;
+  }
+
+  * {
+    @apply border-border;
+  }
+  html {
+    color-scheme: dark;
+  }
+  html.light {
+    color-scheme: light;
+  }
+  body {
+    @apply bg-background text-foreground font-body;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
+}
+
+@layer utilities {
+  .text-teal {
+    color: oklch(var(--teal));
+  }
+  .text-amber-accent {
+    color: oklch(var(--amber));
+  }
+  .text-success {
+    color: oklch(var(--success));
+  }
+  .bg-teal {
+    background-color: oklch(var(--teal));
+  }
+  .bg-teal\/10 {
+    background-color: oklch(var(--teal) / 0.10);
+  }
+  .bg-teal\/20 {
+    background-color: oklch(var(--teal) / 0.20);
+  }
+  .border-teal {
+    border-color: oklch(var(--teal));
+  }
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(var(--border)) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: oklch(var(--border));
+    border-radius: 2px;
+  }
+  .glass {
+    backdrop-filter: blur(12px);
+    background-color: oklch(var(--card) / 0.85);
+  }
+  .glow-teal {
+    box-shadow: 0 0 20px oklch(var(--teal) / 0.25);
+  }
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5;
+  }
+  .mono {
+    font-family: 'JetBrainsMono', monospace;
+  }
+}

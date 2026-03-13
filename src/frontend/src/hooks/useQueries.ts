@@ -1,0 +1,259 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type {
+  Expense,
+  InvoiceTemplate,
+  Party,
+  Product,
+  PurchaseBill,
+  SaleInvoice,
+  UserProfile,
+} from "../backend.d";
+import { useActor } from "./useActor";
+
+const toTime = (date: Date): bigint =>
+  BigInt(date.getTime()) * BigInt(1_000_000);
+const today = () => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+export function useProducts() {
+  const { actor, isFetching } = useActor();
+  return useQuery<Product[]>({
+    queryKey: ["products"],
+    queryFn: async () => (actor ? actor.listProducts() : []),
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useCreateProduct() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (product: Product) => actor!.createProduct(product),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["products"] }),
+  });
+}
+
+export function useUpdateProduct() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (product: Product) => actor!.updateProduct(product),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["products"] }),
+  });
+}
+
+export function useDeleteProduct() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => actor!.deleteProduct(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["products"] }),
+  });
+}
+
+export function useParties() {
+  const { actor, isFetching } = useActor();
+  return useQuery<Party[]>({
+    queryKey: ["parties"],
+    queryFn: async () => (actor ? actor.listParties() : []),
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useCreateParty() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (party: Party) => actor!.createParty(party),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["parties"] }),
+  });
+}
+
+export function useUpdateParty() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (party: Party) => actor!.updateParty(party),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["parties"] }),
+  });
+}
+
+export function useDeleteParty() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => actor!.deleteParty(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["parties"] }),
+  });
+}
+
+export function useSaleInvoices() {
+  const { actor, isFetching } = useActor();
+  return useQuery<SaleInvoice[]>({
+    queryKey: ["sale-invoices"],
+    queryFn: async () => (actor ? actor.listSaleInvoices() : []),
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useCreateSaleInvoice() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (inv: SaleInvoice) => actor!.createSaleInvoice(inv),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["sale-invoices"] });
+      qc.invalidateQueries({ queryKey: ["daily-summary"] });
+    },
+  });
+}
+
+export function usePurchaseBills() {
+  const { actor, isFetching } = useActor();
+  return useQuery<PurchaseBill[]>({
+    queryKey: ["purchase-bills"],
+    queryFn: async () => (actor ? actor.listPurchaseBills() : []),
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useCreatePurchaseBill() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (bill: PurchaseBill) => actor!.createPurchaseBill(bill),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["purchase-bills"] }),
+  });
+}
+
+export function useExpenses() {
+  const { actor, isFetching } = useActor();
+  return useQuery<Expense[]>({
+    queryKey: ["expenses"],
+    queryFn: async () => (actor ? actor.listExpenses() : []),
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useCreateExpense() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (expense: Expense) => actor!.createExpense(expense),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["expenses"] }),
+  });
+}
+
+export function useInvoiceTemplates() {
+  const { actor, isFetching } = useActor();
+  return useQuery<InvoiceTemplate[]>({
+    queryKey: ["templates"],
+    queryFn: async () => (actor ? actor.listInvoiceTemplates() : []),
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useDailySummary() {
+  const { actor, isFetching } = useActor();
+  return useQuery<{ invoiceCount: bigint; totalSales: number }>({
+    queryKey: ["daily-summary"],
+    queryFn: async () => {
+      if (!actor) return { invoiceCount: BigInt(0), totalSales: 0 };
+      return actor.getDailySalesSummary(toTime(today()));
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useProfitLoss(startDate: Date, endDate: Date) {
+  const { actor, isFetching } = useActor();
+  return useQuery<{
+    revenue: number;
+    cost: number;
+    expenses: number;
+    profit: number;
+  }>({
+    queryKey: ["profit-loss", startDate.toISOString(), endDate.toISOString()],
+    queryFn: async () => {
+      if (!actor) return { revenue: 0, cost: 0, expenses: 0, profit: 0 };
+      return actor.getProfitLoss(toTime(startDate), toTime(endDate));
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useCallerProfile() {
+  const { actor, isFetching } = useActor();
+  return useQuery<UserProfile | null>({
+    queryKey: ["caller-profile"],
+    queryFn: async () => (actor ? actor.getCallerUserProfile() : null),
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useSaveCallerProfile() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (profile: UserProfile) => actor!.saveCallerUserProfile(profile),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["caller-profile"] }),
+  });
+}
+
+export function useInventoryReport() {
+  const { actor, isFetching } = useActor();
+  return useQuery<Array<{ value: number; product: Product }>>({
+    queryKey: ["inventory-report"],
+    queryFn: async () => (actor ? actor.getInventoryReport() : []),
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useExpenseSummary(startDate: Date, endDate: Date) {
+  const { actor, isFetching } = useActor();
+  return useQuery<Array<{ total: number; category: string }>>({
+    queryKey: [
+      "expense-summary",
+      startDate.toISOString(),
+      endDate.toISOString(),
+    ],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getExpenseSummary(toTime(startDate), toTime(endDate));
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useSalesSummary(startDate: Date, endDate: Date) {
+  const { actor, isFetching } = useActor();
+  return useQuery<{ invoiceCount: bigint; totalSales: number }>({
+    queryKey: ["sales-summary", startDate.toISOString(), endDate.toISOString()],
+    queryFn: async () => {
+      if (!actor) return { invoiceCount: BigInt(0), totalSales: 0 };
+      return actor.getSalesSummary(toTime(startDate), toTime(endDate));
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function usePartyLedger(partyId: string) {
+  const { actor, isFetching } = useActor();
+  return useQuery<{
+    invoices: SaleInvoice[];
+    bills: PurchaseBill[];
+    party?: Party;
+  }>({
+    queryKey: ["party-ledger", partyId],
+    queryFn: async () => {
+      if (!actor || !partyId) return { invoices: [], bills: [] };
+      return actor.getPartyLedger(partyId);
+    },
+    enabled: !!actor && !isFetching && !!partyId,
+  });
+}
+
+export { toTime };
