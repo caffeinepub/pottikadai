@@ -24,6 +24,12 @@ export const UserRole = IDL.Variant({
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
+export const AppRole = IDL.Variant({
+  'Auditor' : IDL.Null,
+  'Admin' : IDL.Null,
+  'Manager' : IDL.Null,
+  'Salesman' : IDL.Null,
+});
 export const Time = IDL.Int;
 export const CreditNote = IDL.Record({
   'id' : IDL.Text,
@@ -80,6 +86,7 @@ export const Product = IDL.Record({
   'unit' : IDL.Text,
   'isActive' : IDL.Bool,
   'category' : IDL.Text,
+  'gstRate' : IDL.Float64,
   'salePrice' : IDL.Float64,
 });
 export const SaleInvoiceItem = IDL.Record({
@@ -101,6 +108,25 @@ export const PurchaseBill = IDL.Record({
   'partyId' : IDL.Text,
   'subtotal' : IDL.Float64,
 });
+export const QuotationItem = IDL.Record({
+  'qty' : IDL.Nat,
+  'productId' : IDL.Text,
+  'discount' : IDL.Float64,
+  'price' : IDL.Float64,
+});
+export const Quotation = IDL.Record({
+  'id' : IDL.Text,
+  'tax' : IDL.Float64,
+  'status' : IDL.Text,
+  'total' : IDL.Float64,
+  'date' : Time,
+  'createdBy' : IDL.Text,
+  'notes' : IDL.Text,
+  'quotationNumber' : IDL.Text,
+  'items' : IDL.Vec(QuotationItem),
+  'partyId' : IDL.Text,
+  'subtotal' : IDL.Float64,
+});
 export const SaleInvoice = IDL.Record({
   'id' : IDL.Text,
   'tax' : IDL.Float64,
@@ -115,15 +141,30 @@ export const SaleInvoice = IDL.Record({
   'partyId' : IDL.Text,
   'subtotal' : IDL.Float64,
 });
-export const AppRole = IDL.Variant({
-  'Auditor' : IDL.Null,
-  'Admin' : IDL.Null,
-  'Manager' : IDL.Null,
-  'Salesman' : IDL.Null,
-});
-export const UserProfile = IDL.Record({
-  'appRole' : AppRole,
-  'name' : IDL.Text,
+export const BusinessProfile = IDL.Record({
+  'bankAccounts' : IDL.Vec(
+    IDL.Record({
+      'id' : IDL.Text,
+      'ifsc' : IDL.Text,
+      'bankName' : IDL.Text,
+      'accountNumber' : IDL.Text,
+      'accountHolder' : IDL.Text,
+    })
+  ),
+  'gstNumber' : IDL.Text,
+  'businessName' : IDL.Text,
+  'email' : IDL.Text,
+  'logoUrl' : IDL.Text,
+  'upiIds' : IDL.Vec(
+    IDL.Record({
+      'id' : IDL.Text,
+      'upiLabel' : IDL.Text,
+      'isDefault' : IDL.Bool,
+      'upiId' : IDL.Text,
+    })
+  ),
+  'address' : IDL.Text,
+  'phone' : IDL.Text,
 });
 export const POSSession = IDL.Record({
   'id' : IDL.Text,
@@ -164,8 +205,10 @@ export const idlService = IDL.Service({
   '_caffeineStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'changeAppUserPassword' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [], []),
   'clearData' : IDL.Func([], [], []),
   'closePOSSession' : IDL.Func([IDL.Text, IDL.Float64], [], []),
+  'createAppUser' : IDL.Func([IDL.Text, IDL.Text, IDL.Text, AppRole], [], []),
   'createCreditNote' : IDL.Func([CreditNote], [], []),
   'createDebitNote' : IDL.Func([DebitNote], [], []),
   'createExpense' : IDL.Func([Expense], [], []),
@@ -173,12 +216,15 @@ export const idlService = IDL.Service({
   'createParty' : IDL.Func([Party], [], []),
   'createProduct' : IDL.Func([Product], [], []),
   'createPurchaseBill' : IDL.Func([PurchaseBill], [], []),
+  'createQuotation' : IDL.Func([Quotation], [], []),
   'createSaleInvoice' : IDL.Func([SaleInvoice], [], []),
+  'deleteAppUser' : IDL.Func([IDL.Text], [], []),
   'deleteParty' : IDL.Func([IDL.Text], [], []),
   'deleteProduct' : IDL.Func([IDL.Text], [], []),
-  'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
+  'getBusinessProfile' : IDL.Func([], [BusinessProfile], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getCurrentPOSSession' : IDL.Func([], [IDL.Opt(POSSession)], ['query']),
+  'getDailyQuotationCount' : IDL.Func([IDL.Text], [IDL.Nat], ['query']),
   'getDailySalesSummary' : IDL.Func(
       [Time],
       [IDL.Record({ 'invoiceCount' : IDL.Nat, 'totalSales' : IDL.Float64 })],
@@ -221,25 +267,28 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'getPurchaseBill' : IDL.Func([IDL.Text], [IDL.Opt(PurchaseBill)], ['query']),
+  'getQuotation' : IDL.Func([IDL.Text], [IDL.Opt(Quotation)], ['query']),
   'getSaleInvoice' : IDL.Func([IDL.Text], [SaleInvoice], ['query']),
   'getSalesSummary' : IDL.Func(
       [Time, Time],
       [IDL.Record({ 'invoiceCount' : IDL.Nat, 'totalSales' : IDL.Float64 })],
       ['query'],
     ),
-  'getUserProfile' : IDL.Func(
-      [IDL.Principal],
-      [IDL.Opt(UserProfile)],
+  'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+  'isFirstRun' : IDL.Func([], [IDL.Bool], ['query']),
+  'listAppUsers' : IDL.Func(
+      [],
+      [
+        IDL.Vec(
+          IDL.Record({
+            'username' : IDL.Text,
+            'appRole' : AppRole,
+            'name' : IDL.Text,
+          })
+        ),
+      ],
       ['query'],
     ),
-  'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-  'changeAppUserPassword' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [IDL.Bool], []),
-  'createAppUser' : IDL.Func([IDL.Text, IDL.Text, IDL.Text, AppRole], [IDL.Bool], []),
-  'deleteAppUser' : IDL.Func([IDL.Text], [IDL.Bool], []),
-  'isFirstRun' : IDL.Func([], [IDL.Bool], ['query']),
-  'listAppUsers' : IDL.Func([], [IDL.Vec(IDL.Record({ 'username' : IDL.Text, 'name' : IDL.Text, 'appRole' : AppRole }))], ['query']),
-  'loginWithPassword' : IDL.Func([IDL.Text, IDL.Text], [IDL.Opt(IDL.Record({ 'name' : IDL.Text, 'appRole' : AppRole }))], ['query']),
-  'updateAppUser' : IDL.Func([IDL.Text, IDL.Text, AppRole], [IDL.Bool], []),
   'listCreditNotes' : IDL.Func([], [IDL.Vec(CreditNote)], ['query']),
   'listDebitNotes' : IDL.Func([], [IDL.Vec(DebitNote)], ['query']),
   'listExpenses' : IDL.Func([], [IDL.Vec(Expense)], ['query']),
@@ -257,20 +306,28 @@ export const idlService = IDL.Service({
       [IDL.Vec(PurchaseBill)],
       ['query'],
     ),
+  'listQuotations' : IDL.Func([], [IDL.Vec(Quotation)], ['query']),
   'listSaleInvoices' : IDL.Func([], [IDL.Vec(SaleInvoice)], ['query']),
   'listSaleInvoicesByParty' : IDL.Func(
       [IDL.Text],
       [IDL.Vec(SaleInvoice)],
       ['query'],
     ),
+  'loginWithPassword' : IDL.Func(
+      [IDL.Text, IDL.Text],
+      [IDL.Opt(IDL.Record({ 'appRole' : AppRole, 'name' : IDL.Text }))],
+      ['query'],
+    ),
   'openPOSSession' : IDL.Func([POSSession], [], []),
-  'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'saveBusinessProfile' : IDL.Func([BusinessProfile], [], []),
   'setDefaultTemplate' : IDL.Func([IDL.Text], [], []),
+  'updateAppUser' : IDL.Func([IDL.Text, IDL.Text, AppRole], [], []),
   'updateBalance' : IDL.Func([IDL.Text, IDL.Float64], [], []),
   'updateInvoiceTemplate' : IDL.Func([InvoiceTemplate], [], []),
   'updateParty' : IDL.Func([Party], [], []),
   'updateProduct' : IDL.Func([Product], [], []),
   'updatePurchaseBill' : IDL.Func([PurchaseBill], [], []),
+  'updateQuotation' : IDL.Func([Quotation], [], []),
   'updateSaleInvoice' : IDL.Func([SaleInvoice], [], []),
   'updateStock' : IDL.Func([IDL.Text, IDL.Int], [], []),
 });
@@ -293,6 +350,12 @@ export const idlFactory = ({ IDL }) => {
     'admin' : IDL.Null,
     'user' : IDL.Null,
     'guest' : IDL.Null,
+  });
+  const AppRole = IDL.Variant({
+    'Auditor' : IDL.Null,
+    'Admin' : IDL.Null,
+    'Manager' : IDL.Null,
+    'Salesman' : IDL.Null,
   });
   const Time = IDL.Int;
   const CreditNote = IDL.Record({
@@ -350,6 +413,7 @@ export const idlFactory = ({ IDL }) => {
     'unit' : IDL.Text,
     'isActive' : IDL.Bool,
     'category' : IDL.Text,
+    'gstRate' : IDL.Float64,
     'salePrice' : IDL.Float64,
   });
   const SaleInvoiceItem = IDL.Record({
@@ -371,6 +435,25 @@ export const idlFactory = ({ IDL }) => {
     'partyId' : IDL.Text,
     'subtotal' : IDL.Float64,
   });
+  const QuotationItem = IDL.Record({
+    'qty' : IDL.Nat,
+    'productId' : IDL.Text,
+    'discount' : IDL.Float64,
+    'price' : IDL.Float64,
+  });
+  const Quotation = IDL.Record({
+    'id' : IDL.Text,
+    'tax' : IDL.Float64,
+    'status' : IDL.Text,
+    'total' : IDL.Float64,
+    'date' : Time,
+    'createdBy' : IDL.Text,
+    'notes' : IDL.Text,
+    'quotationNumber' : IDL.Text,
+    'items' : IDL.Vec(QuotationItem),
+    'partyId' : IDL.Text,
+    'subtotal' : IDL.Float64,
+  });
   const SaleInvoice = IDL.Record({
     'id' : IDL.Text,
     'tax' : IDL.Float64,
@@ -385,13 +468,31 @@ export const idlFactory = ({ IDL }) => {
     'partyId' : IDL.Text,
     'subtotal' : IDL.Float64,
   });
-  const AppRole = IDL.Variant({
-    'Auditor' : IDL.Null,
-    'Admin' : IDL.Null,
-    'Manager' : IDL.Null,
-    'Salesman' : IDL.Null,
+  const BusinessProfile = IDL.Record({
+    'bankAccounts' : IDL.Vec(
+      IDL.Record({
+        'id' : IDL.Text,
+        'ifsc' : IDL.Text,
+        'bankName' : IDL.Text,
+        'accountNumber' : IDL.Text,
+        'accountHolder' : IDL.Text,
+      })
+    ),
+    'gstNumber' : IDL.Text,
+    'businessName' : IDL.Text,
+    'email' : IDL.Text,
+    'logoUrl' : IDL.Text,
+    'upiIds' : IDL.Vec(
+      IDL.Record({
+        'id' : IDL.Text,
+        'upiLabel' : IDL.Text,
+        'isDefault' : IDL.Bool,
+        'upiId' : IDL.Text,
+      })
+    ),
+    'address' : IDL.Text,
+    'phone' : IDL.Text,
   });
-  const UserProfile = IDL.Record({ 'appRole' : AppRole, 'name' : IDL.Text });
   const POSSession = IDL.Record({
     'id' : IDL.Text,
     'status' : IDL.Text,
@@ -431,8 +532,10 @@ export const idlFactory = ({ IDL }) => {
     '_caffeineStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'changeAppUserPassword' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [], []),
     'clearData' : IDL.Func([], [], []),
     'closePOSSession' : IDL.Func([IDL.Text, IDL.Float64], [], []),
+    'createAppUser' : IDL.Func([IDL.Text, IDL.Text, IDL.Text, AppRole], [], []),
     'createCreditNote' : IDL.Func([CreditNote], [], []),
     'createDebitNote' : IDL.Func([DebitNote], [], []),
     'createExpense' : IDL.Func([Expense], [], []),
@@ -440,12 +543,15 @@ export const idlFactory = ({ IDL }) => {
     'createParty' : IDL.Func([Party], [], []),
     'createProduct' : IDL.Func([Product], [], []),
     'createPurchaseBill' : IDL.Func([PurchaseBill], [], []),
+    'createQuotation' : IDL.Func([Quotation], [], []),
     'createSaleInvoice' : IDL.Func([SaleInvoice], [], []),
+    'deleteAppUser' : IDL.Func([IDL.Text], [], []),
     'deleteParty' : IDL.Func([IDL.Text], [], []),
     'deleteProduct' : IDL.Func([IDL.Text], [], []),
-    'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
+    'getBusinessProfile' : IDL.Func([], [BusinessProfile], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getCurrentPOSSession' : IDL.Func([], [IDL.Opt(POSSession)], ['query']),
+    'getDailyQuotationCount' : IDL.Func([IDL.Text], [IDL.Nat], ['query']),
     'getDailySalesSummary' : IDL.Func(
         [Time],
         [IDL.Record({ 'invoiceCount' : IDL.Nat, 'totalSales' : IDL.Float64 })],
@@ -492,25 +598,28 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Opt(PurchaseBill)],
         ['query'],
       ),
+    'getQuotation' : IDL.Func([IDL.Text], [IDL.Opt(Quotation)], ['query']),
     'getSaleInvoice' : IDL.Func([IDL.Text], [SaleInvoice], ['query']),
     'getSalesSummary' : IDL.Func(
         [Time, Time],
         [IDL.Record({ 'invoiceCount' : IDL.Nat, 'totalSales' : IDL.Float64 })],
         ['query'],
       ),
-    'getUserProfile' : IDL.Func(
-        [IDL.Principal],
-        [IDL.Opt(UserProfile)],
+    'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+    'isFirstRun' : IDL.Func([], [IDL.Bool], ['query']),
+    'listAppUsers' : IDL.Func(
+        [],
+        [
+          IDL.Vec(
+            IDL.Record({
+              'username' : IDL.Text,
+              'appRole' : AppRole,
+              'name' : IDL.Text,
+            })
+          ),
+        ],
         ['query'],
       ),
-    'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-  'changeAppUserPassword' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [IDL.Bool], []),
-  'createAppUser' : IDL.Func([IDL.Text, IDL.Text, IDL.Text, AppRole], [IDL.Bool], []),
-  'deleteAppUser' : IDL.Func([IDL.Text], [IDL.Bool], []),
-  'isFirstRun' : IDL.Func([], [IDL.Bool], ['query']),
-  'listAppUsers' : IDL.Func([], [IDL.Vec(IDL.Record({ 'username' : IDL.Text, 'name' : IDL.Text, 'appRole' : AppRole }))], ['query']),
-  'loginWithPassword' : IDL.Func([IDL.Text, IDL.Text], [IDL.Opt(IDL.Record({ 'name' : IDL.Text, 'appRole' : AppRole }))], ['query']),
-  'updateAppUser' : IDL.Func([IDL.Text, IDL.Text, AppRole], [IDL.Bool], []),
     'listCreditNotes' : IDL.Func([], [IDL.Vec(CreditNote)], ['query']),
     'listDebitNotes' : IDL.Func([], [IDL.Vec(DebitNote)], ['query']),
     'listExpenses' : IDL.Func([], [IDL.Vec(Expense)], ['query']),
@@ -532,20 +641,28 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(PurchaseBill)],
         ['query'],
       ),
+    'listQuotations' : IDL.Func([], [IDL.Vec(Quotation)], ['query']),
     'listSaleInvoices' : IDL.Func([], [IDL.Vec(SaleInvoice)], ['query']),
     'listSaleInvoicesByParty' : IDL.Func(
         [IDL.Text],
         [IDL.Vec(SaleInvoice)],
         ['query'],
       ),
+    'loginWithPassword' : IDL.Func(
+        [IDL.Text, IDL.Text],
+        [IDL.Opt(IDL.Record({ 'appRole' : AppRole, 'name' : IDL.Text }))],
+        ['query'],
+      ),
     'openPOSSession' : IDL.Func([POSSession], [], []),
-    'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'saveBusinessProfile' : IDL.Func([BusinessProfile], [], []),
     'setDefaultTemplate' : IDL.Func([IDL.Text], [], []),
+    'updateAppUser' : IDL.Func([IDL.Text, IDL.Text, AppRole], [], []),
     'updateBalance' : IDL.Func([IDL.Text, IDL.Float64], [], []),
     'updateInvoiceTemplate' : IDL.Func([InvoiceTemplate], [], []),
     'updateParty' : IDL.Func([Party], [], []),
     'updateProduct' : IDL.Func([Product], [], []),
     'updatePurchaseBill' : IDL.Func([PurchaseBill], [], []),
+    'updateQuotation' : IDL.Func([Quotation], [], []),
     'updateSaleInvoice' : IDL.Func([SaleInvoice], [], []),
     'updateStock' : IDL.Func([IDL.Text, IDL.Int], [], []),
   });

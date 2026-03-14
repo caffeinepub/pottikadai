@@ -33,6 +33,19 @@ export interface POSSession {
     totalSales: number;
     closingCash: number;
 }
+export interface Quotation {
+    id: string;
+    tax: number;
+    status: string;
+    total: number;
+    date: Time;
+    createdBy: string;
+    notes: string;
+    quotationNumber: string;
+    items: Array<QuotationItem>;
+    partyId: string;
+    subtotal: number;
+}
 export interface SaleInvoice {
     id: string;
     tax: number;
@@ -46,6 +59,12 @@ export interface SaleInvoice {
     paidAmount: number;
     partyId: string;
     subtotal: number;
+}
+export interface QuotationItem {
+    qty: bigint;
+    productId: string;
+    discount: number;
+    price: number;
 }
 export interface Party {
     id: string;
@@ -91,6 +110,27 @@ export interface SaleInvoiceItem {
     discount: number;
     price: number;
 }
+export interface BusinessProfile {
+    bankAccounts: Array<{
+        id: string;
+        ifsc: string;
+        bankName: string;
+        accountNumber: string;
+        accountHolder: string;
+    }>;
+    gstNumber: string;
+    businessName: string;
+    email: string;
+    logoUrl: string;
+    upiIds: Array<{
+        id: string;
+        upiLabel: string;
+        isDefault: boolean;
+        upiId: string;
+    }>;
+    address: string;
+    phone: string;
+}
 export interface Product {
     id: string;
     sku: string;
@@ -101,12 +141,8 @@ export interface Product {
     unit: string;
     isActive: boolean;
     category: string;
+    gstRate: number;
     salePrice: number;
-}
-export interface AppUser {
-    username: string;
-    name: string;
-    appRole: AppRole;
 }
 export enum AppRole {
     Auditor = "Auditor",
@@ -129,22 +165,11 @@ export enum Variant_customer_vendor {
     vendor = "vendor"
 }
 export interface backendInterface {
-    // Auth
-    isFirstRun(): Promise<boolean>;
-    loginWithPassword(username: string, password: string): Promise<{ name: string; appRole: AppRole } | null>;
-    createAppUser(username: string, password: string, name: string, appRole: AppRole): Promise<boolean>;
-    changeAppUserPassword(username: string, oldPassword: string, newPassword: string): Promise<boolean>;
-    updateAppUser(username: string, name: string, appRole: AppRole): Promise<boolean>;
-    deleteAppUser(username: string): Promise<boolean>;
-    listAppUsers(): Promise<Array<AppUser>>;
-    // Authorization compat
-    _initializeAccessControlWithSecret(secret: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
-    getCallerUserRole(): Promise<UserRole>;
-    isCallerAdmin(): Promise<boolean>;
-    // Data
+    changeAppUserPassword(username: string, oldPassword: string, newPassword: string): Promise<void>;
     clearData(): Promise<void>;
     closePOSSession(id: string, closingCash: number): Promise<void>;
+    createAppUser(username: string, password: string, name: string, appRole: AppRole): Promise<void>;
     createCreditNote(note: CreditNote): Promise<void>;
     createDebitNote(note: DebitNote): Promise<void>;
     createExpense(expense: Expense): Promise<void>;
@@ -152,21 +177,55 @@ export interface backendInterface {
     createParty(party: Party): Promise<void>;
     createProduct(product: Product): Promise<void>;
     createPurchaseBill(bill: PurchaseBill): Promise<void>;
+    createQuotation(quotation: Quotation): Promise<void>;
     createSaleInvoice(invoice: SaleInvoice): Promise<void>;
+    deleteAppUser(username: string): Promise<void>;
     deleteParty(id: string): Promise<void>;
     deleteProduct(id: string): Promise<void>;
+    getBusinessProfile(): Promise<BusinessProfile>;
+    getCallerUserRole(): Promise<UserRole>;
     getCurrentPOSSession(): Promise<POSSession | null>;
-    getDailySalesSummary(date: Time): Promise<{ invoiceCount: bigint; totalSales: number }>;
+    getDailyQuotationCount(dateStr: string): Promise<bigint>;
+    getDailySalesSummary(date: Time): Promise<{
+        invoiceCount: bigint;
+        totalSales: number;
+    }>;
     getDefaultTemplate(): Promise<InvoiceTemplate | null>;
-    getExpenseSummary(startDate: Time, endDate: Time): Promise<Array<{ total: number; category: string }>>;
-    getInventoryReport(): Promise<Array<{ value: number; product: Product }>>;
+    getExpenseSummary(startDate: Time, endDate: Time): Promise<Array<{
+        total: number;
+        category: string;
+    }>>;
+    getInventoryReport(): Promise<Array<{
+        value: number;
+        product: Product;
+    }>>;
     getParty(id: string): Promise<Party | null>;
-    getPartyLedger(partyId: string): Promise<{ invoices: Array<SaleInvoice>; bills: Array<PurchaseBill>; party?: Party }>;
+    getPartyLedger(partyId: string): Promise<{
+        invoices: Array<SaleInvoice>;
+        bills: Array<PurchaseBill>;
+        party?: Party;
+    }>;
     getProduct(id: string): Promise<Product>;
-    getProfitLoss(startDate: Time, endDate: Time): Promise<{ revenue: number; cost: number; expenses: number; profit: number }>;
+    getProfitLoss(startDate: Time, endDate: Time): Promise<{
+        revenue: number;
+        cost: number;
+        expenses: number;
+        profit: number;
+    }>;
     getPurchaseBill(id: string): Promise<PurchaseBill | null>;
+    getQuotation(id: string): Promise<Quotation | null>;
     getSaleInvoice(id: string): Promise<SaleInvoice>;
-    getSalesSummary(startDate: Time, endDate: Time): Promise<{ invoiceCount: bigint; totalSales: number }>;
+    getSalesSummary(startDate: Time, endDate: Time): Promise<{
+        invoiceCount: bigint;
+        totalSales: number;
+    }>;
+    isCallerAdmin(): Promise<boolean>;
+    isFirstRun(): Promise<boolean>;
+    listAppUsers(): Promise<Array<{
+        username: string;
+        appRole: AppRole;
+        name: string;
+    }>>;
     listCreditNotes(): Promise<Array<CreditNote>>;
     listDebitNotes(): Promise<Array<DebitNote>>;
     listExpenses(): Promise<Array<Expense>>;
@@ -176,15 +235,23 @@ export interface backendInterface {
     listProducts(): Promise<Array<Product>>;
     listPurchaseBills(): Promise<Array<PurchaseBill>>;
     listPurchaseBillsByParty(partyId: string): Promise<Array<PurchaseBill>>;
+    listQuotations(): Promise<Array<Quotation>>;
     listSaleInvoices(): Promise<Array<SaleInvoice>>;
     listSaleInvoicesByParty(partyId: string): Promise<Array<SaleInvoice>>;
+    loginWithPassword(username: string, password: string): Promise<{
+        appRole: AppRole;
+        name: string;
+    } | null>;
     openPOSSession(session: POSSession): Promise<void>;
+    saveBusinessProfile(profile: BusinessProfile): Promise<void>;
     setDefaultTemplate(id: string): Promise<void>;
+    updateAppUser(username: string, name: string, appRole: AppRole): Promise<void>;
     updateBalance(partyId: string, newBalance: number): Promise<void>;
     updateInvoiceTemplate(template: InvoiceTemplate): Promise<void>;
     updateParty(party: Party): Promise<void>;
     updateProduct(product: Product): Promise<void>;
     updatePurchaseBill(bill: PurchaseBill): Promise<void>;
+    updateQuotation(quotation: Quotation): Promise<void>;
     updateSaleInvoice(invoice: SaleInvoice): Promise<void>;
     updateStock(productId: string, newQty: bigint): Promise<void>;
 }

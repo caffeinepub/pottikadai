@@ -1,55 +1,28 @@
 # Pottikadai
 
 ## Current State
-New project. No existing code.
+Full-featured business management app with Dashboard, POS, Products, Sales, Purchase, Parties, Accounting, Expenses, Invoice Designer, Reports, Settings. Backend has sales invoices, purchase bills, products, parties, expenses, business profile (with GST, UPI IDs, bank accounts). Authentication via username/password.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Full business management app inspired by Vyapar Gold feature set
-- Role-based access: Admin, Manager, Salesman, Auditor
-- POS (Point of Sale) module with touch/keyboard optimized UI
-- Invoice Designer with templates for Thermal and A4/A5 printers
-- Inventory Management: products, stock levels, low stock alerts
-- Sales & Purchase: invoices, bills, purchase orders, credit/debit notes
-- Parties module: customers and vendors with outstanding balance tracking
-- Accounting: ledger, P&L, balance sheet, cash flow
-- Expense Tracking: categorized business expenses
-- Reports: sales, inventory, financial -- role-filtered
-- Dark mode toggle (system default + manual override)
-- Corporate design system: clean, professional, high-contrast, accessible
-- Fully responsive: PC, tablet, mobile (web-first, PWA-ready)
+- `Quotation` data model: id, quotationNumber (daily auto-number e.g. Q-20260314-001), date, partyId, items (same as SaleInvoiceItem), subtotal, tax, total, status (draft/confirmed/converted), notes, createdBy
+- Backend APIs: createQuotation, updateQuotation, listQuotations, getQuotation, getDailyQuotationCount (for daily numbering), convertQuotationToInvoice
+- New `Quotations` page accessible from nav for Admin, Manager, Salesman
+- List view: show quotation number, date, party name, total, status badges, actions (edit, convert to invoice)
+- Create/Edit form: party selector, item lines (product, qty, price, discount), notes, auto-calculate subtotal/tax/total
+- Convert to Invoice: opens payment mode selector (cash/card/UPI), then creates SaleInvoice from quotation data, marks quotation as converted
 
 ### Modify
-- N/A (new project)
+- `App.tsx`: add "quotations" page routing, import Quotations component
+- `AppShell.tsx`: add "quotations" nav item with FileText icon, for Admin/Manager/Salesman roles
+- `Page` type: add "quotations"
 
 ### Remove
-- N/A (new project)
+- Nothing removed
 
 ## Implementation Plan
-
-### Backend (Motoko)
-- User/role management via authorization component
-- Products: CRUD with categories, SKU, stock quantity, price
-- Parties: customers and vendors with balance tracking
-- Transactions: sales invoices, purchase bills, credit/debit notes
-- Expenses: categorized entries
-- POS session: cart, checkout, payment recording
-- Invoice templates: stored JSON layout configs
-- Reports: aggregated queries for sales, inventory, financial summaries
-
-### Frontend (React + Tailwind)
-- Auth flow: login, role-gated navigation
-- Shell: sidebar nav (collapsible), top bar with dark mode toggle, role badge
-- Dashboard: KPI cards (revenue, sales count, stock alerts, outstanding)
-- POS screen: product grid + cart panel, quantity controls, payment modal
-- Inventory: table with search/filter, add/edit product drawer
-- Sales: invoice list, create invoice form, print preview
-- Purchase: bill list, create purchase order form
-- Parties: customer/vendor tabs, ledger view per party
-- Accounting: ledger table, P&L summary, balance sheet
-- Expenses: entry list, add expense form
-- Invoice Designer: drag-and-drop template builder, print size selector
-- Reports: tabbed reports by category, charts
-- Settings: business profile, user management (Admin only)
-- Dark mode: CSS variables + Tailwind dark class, persisted in localStorage
+1. Backend: add Quotation type, daily counter logic, CRUD + convert function
+2. Update backend.d.ts with Quotation interface and new API methods
+3. Add Quotations page component with list, create, edit, convert-to-invoice flows
+4. Wire up nav and routing in AppShell and App.tsx

@@ -22,26 +22,37 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Building2,
+  CheckCircle2,
+  CreditCard,
   Eye,
   EyeOff,
   KeyRound,
   Loader2,
+  Plus,
   Save,
   Shield,
+  Smartphone,
+  Star,
   Trash2,
   UserPlus,
   Users,
+  XCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import type { BusinessProfile } from "../backend.d";
 import { AppRole } from "../backend.d";
 import { useAppSession } from "../hooks/useAppSession";
 import {
   useAppUsers,
+  useBusinessProfile,
   useChangePassword,
   useCreateAppUser,
   useDeleteAppUser,
+  useSaveBusinessProfile,
 } from "../hooks/useQueries";
+
+const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
 
 const ROLE_OPTIONS = [
   { value: AppRole.Admin, label: "Admin", desc: "Full system access" },
@@ -65,15 +76,573 @@ const ROLE_COLORS: Record<AppRole, string> = {
   [AppRole.Auditor]: "bg-muted text-muted-foreground border-border",
 };
 
+const emptyProfile = (): BusinessProfile => ({
+  businessName: "",
+  gstNumber: "",
+  address: "",
+  phone: "",
+  email: "",
+  logoUrl: "",
+  bankAccounts: [],
+  upiIds: [],
+});
+
+function BusinessProfileTab() {
+  const { data: profileData, isLoading } = useBusinessProfile();
+  const saveProfile = useSaveBusinessProfile();
+
+  const [profile, setProfile] = useState<BusinessProfile>(emptyProfile());
+  const [gstValid, setGstValid] = useState<boolean | null>(null);
+
+  // Bank account add dialog
+  const [bankOpen, setBankOpen] = useState(false);
+  const [newBank, setNewBank] = useState({
+    bankName: "",
+    accountNumber: "",
+    ifsc: "",
+    accountHolder: "",
+  });
+
+  // UPI add dialog
+  const [upiOpen, setUpiOpen] = useState(false);
+  const [newUpi, setNewUpi] = useState({ upiLabel: "", upiId: "" });
+
+  useEffect(() => {
+    if (profileData) setProfile(profileData);
+  }, [profileData]);
+
+  const handleGstChange = (val: string) => {
+    const upper = val.toUpperCase().slice(0, 15);
+    setProfile((p) => ({ ...p, gstNumber: upper }));
+    if (upper.length === 0) {
+      setGstValid(null);
+    } else if (upper.length === 15) {
+      setGstValid(GSTIN_REGEX.test(upper));
+    } else {
+      setGstValid(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (profile.gstNumber && !GSTIN_REGEX.test(profile.gstNumber)) {
+      toast.error("Invalid GST number format");
+      return;
+    }
+    try {
+      await saveProfile.mutateAsync(profile);
+      toast.success("Business profile saved");
+    } catch {
+      toast.error("Failed to save profile");
+    }
+  };
+
+  const addBank = () => {
+    if (
+      !newBank.bankName ||
+      !newBank.accountNumber ||
+      !newBank.ifsc ||
+      !newBank.accountHolder
+    ) {
+      toast.error("All bank fields are required");
+      return;
+    }
+    setProfile((p) => ({
+      ...p,
+      bankAccounts: [
+        ...p.bankAccounts,
+        { ...newBank, id: crypto.randomUUID() },
+      ],
+    }));
+    setNewBank({
+      bankName: "",
+      accountNumber: "",
+      ifsc: "",
+      accountHolder: "",
+    });
+    setBankOpen(false);
+  };
+
+  const removeBank = (id: string) =>
+    setProfile((p) => ({
+      ...p,
+      bankAccounts: p.bankAccounts.filter((b) => b.id !== id),
+    }));
+
+  const addUpi = () => {
+    if (!newUpi.upiLabel || !newUpi.upiId) {
+      toast.error("Label and UPI ID are required");
+      return;
+    }
+    const isFirst = profile.upiIds.length === 0;
+    setProfile((p) => ({
+      ...p,
+      upiIds: [
+        ...p.upiIds,
+        { ...newUpi, id: crypto.randomUUID(), isDefault: isFirst },
+      ],
+    }));
+    setNewUpi({ upiLabel: "", upiId: "" });
+    setUpiOpen(false);
+  };
+
+  const removeUpi = (id: string) =>
+    setProfile((p) => {
+      const remaining = p.upiIds.filter((u) => u.id !== id);
+      // If removed was default, set first as default
+      if (remaining.length > 0 && !remaining.some((u) => u.isDefault)) {
+        remaining[0] = { ...remaining[0], isDefault: true };
+      }
+      return { ...p, upiIds: remaining };
+    });
+
+  const setDefaultUpi = (id: string) =>
+    setProfile((p) => ({
+      ...p,
+      upiIds: p.upiIds.map((u) => ({ ...u, isDefault: u.id === id })),
+    }));
+
+  if (isLoading) {
+    return (
+      <div
+        className="flex items-center justify-center py-16"
+        data-ocid="settings.biz.loading_state"
+      >
+        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-2xl space-y-4">
+      <Tabs defaultValue="profile">
+        <TabsList className="mb-4">
+          <TabsTrigger value="profile" data-ocid="settings.biz.profile.tab">
+            <Building2 className="w-4 h-4 mr-2" /> Profile
+          </TabsTrigger>
+          <TabsTrigger value="payments" data-ocid="settings.biz.payments.tab">
+            <CreditCard className="w-4 h-4 mr-2" /> Payment Types
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Profile sub-tab */}
+        <TabsContent value="profile">
+          <Card className="border-border">
+            <CardHeader>
+              <CardTitle className="text-base font-display">
+                Business Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-1">
+                <Label>Business Name</Label>
+                <Input
+                  value={profile.businessName}
+                  onChange={(e) =>
+                    setProfile((p) => ({ ...p, businessName: e.target.value }))
+                  }
+                  placeholder="Your Business Name"
+                  data-ocid="settings.bizname.input"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Phone</Label>
+                  <Input
+                    value={profile.phone}
+                    onChange={(e) =>
+                      setProfile((p) => ({ ...p, phone: e.target.value }))
+                    }
+                    placeholder="+91 98765 43210"
+                    data-ocid="settings.phone.input"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Email</Label>
+                  <Input
+                    value={profile.email}
+                    onChange={(e) =>
+                      setProfile((p) => ({ ...p, email: e.target.value }))
+                    }
+                    placeholder="info@business.com"
+                    data-ocid="settings.email.input"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label>Address</Label>
+                <Textarea
+                  value={profile.address}
+                  onChange={(e) =>
+                    setProfile((p) => ({ ...p, address: e.target.value }))
+                  }
+                  placeholder="Street, City, State, PIN"
+                  rows={3}
+                  data-ocid="settings.bizaddress.textarea"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>GST Number (GSTIN)</Label>
+                <div className="relative">
+                  <Input
+                    value={profile.gstNumber}
+                    onChange={(e) => handleGstChange(e.target.value)}
+                    placeholder="22AAAAA0000A1Z5"
+                    className="font-mono uppercase pr-10"
+                    maxLength={15}
+                    data-ocid="settings.gstin.input"
+                  />
+                  {gstValid === true && (
+                    <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500" />
+                  )}
+                  {gstValid === false && (
+                    <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-destructive" />
+                  )}
+                </div>
+                {gstValid === true && (
+                  <p
+                    className="text-xs text-green-500 mt-1"
+                    data-ocid="settings.gstin.success_state"
+                  >
+                    ✓ Valid GSTIN format
+                  </p>
+                )}
+                {gstValid === false && (
+                  <p
+                    className="text-xs text-destructive mt-1"
+                    data-ocid="settings.gstin.error_state"
+                  >
+                    Invalid format — must be 15 chars (e.g., 22AAAAA0000A1Z5)
+                  </p>
+                )}
+              </div>
+              <Button
+                onClick={handleSaveProfile}
+                disabled={saveProfile.isPending}
+                data-ocid="settings.biz.save_button"
+              >
+                {saveProfile.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
+                Save Profile
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Payment Types sub-tab */}
+        <TabsContent value="payments" className="space-y-4">
+          {/* Bank Accounts */}
+          <Card className="border-border">
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <CardTitle className="text-base font-display flex items-center gap-2">
+                <CreditCard className="w-4 h-4" /> Bank Accounts
+              </CardTitle>
+              <Dialog open={bankOpen} onOpenChange={setBankOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    data-ocid="settings.bank.open_modal_button"
+                  >
+                    <Plus className="w-4 h-4 mr-1" /> Add Bank
+                  </Button>
+                </DialogTrigger>
+                <DialogContent data-ocid="settings.bank.dialog">
+                  <DialogHeader>
+                    <DialogTitle>Add Bank Account</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-3 pt-2">
+                    <div className="space-y-1">
+                      <Label>Bank Name</Label>
+                      <Input
+                        value={newBank.bankName}
+                        onChange={(e) =>
+                          setNewBank((b) => ({
+                            ...b,
+                            bankName: e.target.value,
+                          }))
+                        }
+                        placeholder="State Bank of India"
+                        data-ocid="settings.bank.name.input"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Account Holder Name</Label>
+                      <Input
+                        value={newBank.accountHolder}
+                        onChange={(e) =>
+                          setNewBank((b) => ({
+                            ...b,
+                            accountHolder: e.target.value,
+                          }))
+                        }
+                        placeholder="Full name as per bank"
+                        data-ocid="settings.bank.holder.input"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Account Number</Label>
+                      <Input
+                        value={newBank.accountNumber}
+                        onChange={(e) =>
+                          setNewBank((b) => ({
+                            ...b,
+                            accountNumber: e.target.value,
+                          }))
+                        }
+                        placeholder="XXXXXXXXXXXX"
+                        data-ocid="settings.bank.number.input"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>IFSC Code</Label>
+                      <Input
+                        value={newBank.ifsc}
+                        onChange={(e) =>
+                          setNewBank((b) => ({
+                            ...b,
+                            ifsc: e.target.value.toUpperCase(),
+                          }))
+                        }
+                        placeholder="SBIN0001234"
+                        className="font-mono uppercase"
+                        data-ocid="settings.bank.ifsc.input"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => setBankOpen(false)}
+                      data-ocid="settings.bank.cancel_button"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={addBank}
+                      data-ocid="settings.bank.confirm_button"
+                    >
+                      Add Account
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
+            <CardContent>
+              {profile.bankAccounts.length === 0 ? (
+                <div
+                  className="text-center py-6 text-sm text-muted-foreground"
+                  data-ocid="settings.bank.empty_state"
+                >
+                  No bank accounts added yet.
+                </div>
+              ) : (
+                <div className="space-y-2" data-ocid="settings.bank.list">
+                  {profile.bankAccounts.map((bank, idx) => (
+                    <div
+                      key={bank.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border"
+                      data-ocid={`settings.bank.item.${idx + 1}`}
+                    >
+                      <div>
+                        <p className="text-sm font-semibold">{bank.bankName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {bank.accountHolder}
+                        </p>
+                        <p className="text-xs font-mono text-muted-foreground mt-0.5">
+                          {bank.accountNumber} &bull; IFSC: {bank.ifsc}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => removeBank(bank.id)}
+                        data-ocid={`settings.bank.delete_button.${idx + 1}`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* UPI IDs */}
+          <Card className="border-border">
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <CardTitle className="text-base font-display flex items-center gap-2">
+                <Smartphone className="w-4 h-4" /> UPI IDs
+              </CardTitle>
+              <Dialog open={upiOpen} onOpenChange={setUpiOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    data-ocid="settings.upi.open_modal_button"
+                  >
+                    <Plus className="w-4 h-4 mr-1" /> Add UPI
+                  </Button>
+                </DialogTrigger>
+                <DialogContent data-ocid="settings.upi.dialog">
+                  <DialogHeader>
+                    <DialogTitle>Add UPI ID</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-3 pt-2">
+                    <div className="space-y-1">
+                      <Label>Label</Label>
+                      <Input
+                        value={newUpi.upiLabel}
+                        onChange={(e) =>
+                          setNewUpi((u) => ({ ...u, upiLabel: e.target.value }))
+                        }
+                        placeholder="e.g., Business Account"
+                        data-ocid="settings.upi.label.input"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>UPI ID</Label>
+                      <Input
+                        value={newUpi.upiId}
+                        onChange={(e) =>
+                          setNewUpi((u) => ({ ...u, upiId: e.target.value }))
+                        }
+                        placeholder="yourname@upi"
+                        data-ocid="settings.upi.id.input"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => setUpiOpen(false)}
+                      data-ocid="settings.upi.cancel_button"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={addUpi}
+                      data-ocid="settings.upi.confirm_button"
+                    >
+                      Add UPI ID
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
+            <CardContent>
+              {profile.upiIds.length === 0 ? (
+                <div
+                  className="text-center py-6 text-sm text-muted-foreground"
+                  data-ocid="settings.upi.empty_state"
+                >
+                  No UPI IDs added yet.
+                </div>
+              ) : (
+                <div className="space-y-2" data-ocid="settings.upi.list">
+                  {profile.upiIds.map((upi, idx) => (
+                    <div
+                      key={upi.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border"
+                      data-ocid={`settings.upi.item.${idx + 1}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold">
+                              {upi.upiLabel}
+                            </p>
+                            {upi.isDefault && (
+                              <Badge
+                                variant="outline"
+                                className="text-xs bg-primary/10 text-primary border-primary/30"
+                              >
+                                Default
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs font-mono text-muted-foreground">
+                            {upi.upiId}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {!upi.isDefault && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-primary"
+                            onClick={() => setDefaultUpi(upi.id)}
+                            title="Set as default"
+                            data-ocid={`settings.upi.toggle.${idx + 1}`}
+                          >
+                            <Star className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => removeUpi(upi.id)}
+                          data-ocid={`settings.upi.delete_button.${idx + 1}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {profile.upiIds.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-3">
+                  <Star className="w-3 h-3 inline mr-1" />
+                  Star to set a UPI ID as default for payments.
+                </p>
+              )}
+              {profile.upiIds.length > 0 && (
+                <Button
+                  className="mt-3"
+                  onClick={handleSaveProfile}
+                  disabled={saveProfile.isPending}
+                  data-ocid="settings.payments.save_button"
+                >
+                  {saveProfile.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-2" />
+                  )}
+                  Save Payment Info
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+
+          {(profile.bankAccounts.length > 0 || profile.upiIds.length > 0) && (
+            <Button
+              onClick={handleSaveProfile}
+              disabled={saveProfile.isPending}
+              data-ocid="settings.payments.save_button"
+            >
+              {saveProfile.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
+              Save All Payment Info
+            </Button>
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
 export function Settings() {
   const { session } = useAppSession();
   const isAdmin = session?.appRole === AppRole.Admin;
-
-  // Business state
-  const [bizName, setBizName] = useState("My Business");
-  const [bizAddress, setBizAddress] = useState("");
-  const [gstin, setGstin] = useState("");
-  const [savingBiz, setSavingBiz] = useState(false);
 
   // Change password state
   const [currentPw, setCurrentPw] = useState("");
@@ -92,13 +661,6 @@ export function Settings() {
   const [newUsername, setNewUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newRole, setNewRole] = useState<AppRole>(AppRole.Salesman);
-
-  const handleSaveBusiness = async () => {
-    setSavingBiz(true);
-    await new Promise((r) => setTimeout(r, 500));
-    setSavingBiz(false);
-    toast.success("Business profile saved");
-  };
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -193,59 +755,7 @@ export function Settings() {
 
         {/* Business Profile */}
         <TabsContent value="business">
-          <div className="max-w-2xl space-y-4">
-            <Card className="border-border">
-              <CardHeader>
-                <CardTitle className="text-base font-display">
-                  Business Profile
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-1">
-                  <Label>Business Name</Label>
-                  <Input
-                    value={bizName}
-                    onChange={(e) => setBizName(e.target.value)}
-                    placeholder="Your Business Name"
-                    data-ocid="settings.bizname.input"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>Address</Label>
-                  <Textarea
-                    value={bizAddress}
-                    onChange={(e) => setBizAddress(e.target.value)}
-                    placeholder="Street, City, State, PIN"
-                    rows={3}
-                    data-ocid="settings.bizaddress.textarea"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>GSTIN</Label>
-                  <Input
-                    value={gstin}
-                    onChange={(e) => setGstin(e.target.value)}
-                    placeholder="22AAAAA0000A1Z5"
-                    className="font-mono uppercase"
-                    maxLength={15}
-                    data-ocid="settings.gstin.input"
-                  />
-                </div>
-                <Button
-                  onClick={handleSaveBusiness}
-                  disabled={savingBiz}
-                  data-ocid="settings.biz.save_button"
-                >
-                  {savingBiz ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <Save className="w-4 h-4 mr-2" />
-                  )}
-                  Save Business Profile
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+          <BusinessProfileTab />
         </TabsContent>
 
         {/* Security / Change Password */}

@@ -6,17 +6,6 @@ import { getSecretParameter } from "../utils/urlParams";
 import { useInternetIdentity } from "./useInternetIdentity";
 
 const ACTOR_QUERY_KEY = "actor";
-const INIT_TIMEOUT_MS = 8000; // 8 second timeout for backend init
-
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error("Timeout")), ms),
-    ),
-  ]);
-}
-
 export function useActor() {
   const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
@@ -25,28 +14,26 @@ export function useActor() {
     queryFn: async () => {
       const isAuthenticated = !!identity;
 
-      const actorOptions = isAuthenticated
-        ? { agentOptions: { identity } }
-        : undefined;
-
-      const actor = await createActorWithConfig(actorOptions);
-
-      // Initialize access control -- non-blocking: if it times out or fails, continue anyway
-      try {
-        const adminToken = getSecretParameter("caffeineAdminToken") || "";
-        await withTimeout(
-          actor._initializeAccessControlWithSecret(adminToken),
-          INIT_TIMEOUT_MS,
-        );
-      } catch {
-        // Silently continue -- the app can still function
+      if (!isAuthenticated) {
+        // Return anonymous actor if not authenticated
+        return await createActorWithConfig();
       }
 
+      const actorOptions = {
+        agentOptions: {
+          identity,
+        },
+      };
+
+      const actor = await createActorWithConfig(actorOptions);
+      const adminToken = getSecretParameter("caffeineAdminToken") || "";
+      await actor._initializeAccessControlWithSecret(adminToken);
       return actor;
     },
+    // Only refetch when identity changes
     staleTime: Number.POSITIVE_INFINITY,
+    // This will cause the actor to be recreated when the identity changes
     enabled: true,
-    retry: false, // Don't retry on failure -- avoids extended loading
   });
 
   // When the actor changes, invalidate dependent queries
@@ -67,7 +54,6 @@ export function useActor() {
 
   return {
     actor: actorQuery.data || null,
-    // Consider loading done once we have data OR once it errored out
-    isFetching: actorQuery.isFetching && !actorQuery.data,
+    isFetching: actorQuery.isFetching,
   };
 }

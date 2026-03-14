@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
-  AppUser,
+  BusinessProfile,
   Expense,
   InvoiceTemplate,
   Party,
@@ -204,12 +204,14 @@ export function useLogin() {
 
 export function useAppUsers() {
   const { actor, isFetching } = useActor();
-  return useQuery<AppUser[]>({
+  return useQuery<Array<{ username: string; appRole: AppRole; name: string }>>({
     queryKey: ["app-users"],
     queryFn: async () => {
       if (!actor) return [];
       const a = actor as any;
-      return a.listAppUsers() as Promise<AppUser[]>;
+      return a.listAppUsers() as Promise<
+        Array<{ username: string; appRole: AppRole; name: string }>
+      >;
     },
     enabled: !!actor && !isFetching,
   });
@@ -326,6 +328,39 @@ export function usePartyLedger(partyId: string) {
       return actor.getPartyLedger(partyId);
     },
     enabled: !!actor && !isFetching && !!partyId,
+  });
+}
+
+export function useBusinessProfile() {
+  const { actor, isFetching } = useActor();
+  return useQuery<BusinessProfile>({
+    queryKey: ["business-profile"],
+    queryFn: async () => {
+      if (!actor) {
+        return {
+          businessName: "",
+          gstNumber: "",
+          address: "",
+          phone: "",
+          email: "",
+          logoUrl: "",
+          bankAccounts: [],
+          upiIds: [],
+        };
+      }
+      return actor.getBusinessProfile();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useSaveBusinessProfile() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (profile: BusinessProfile) =>
+      actor!.saveBusinessProfile(profile),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["business-profile"] }),
   });
 }
 

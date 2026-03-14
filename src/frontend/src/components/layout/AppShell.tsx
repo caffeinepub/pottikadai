@@ -22,6 +22,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CreditCard,
+  FileText,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -53,7 +54,8 @@ type Page =
   | "expenses"
   | "invoice-designer"
   | "reports"
-  | "settings";
+  | "settings"
+  | "quotations";
 
 interface UserProfileLike {
   name: string;
@@ -91,6 +93,12 @@ const NAV_ITEMS: NavItem[] = [
     id: "products",
     label: "Products",
     icon: Package,
+    roles: [AppRole.Admin, AppRole.Manager, AppRole.Salesman],
+  },
+  {
+    id: "quotations",
+    label: "Quotations",
+    icon: FileText,
     roles: [AppRole.Admin, AppRole.Manager, AppRole.Salesman],
   },
   {
@@ -155,6 +163,7 @@ interface AppShellProps {
   isDark: boolean;
   onToggleTheme: () => void;
   onLogout: () => void;
+  businessName?: string;
 }
 
 export type { Page };
@@ -167,12 +176,15 @@ export function AppShell({
   isDark,
   onToggleTheme,
   onLogout,
+  businessName,
 }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const role = profile?.appRole ?? AppRole.Salesman;
   const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(role));
+
+  const displayName = businessName?.trim() ? businessName.trim() : "Pottikadai";
 
   const pageTitles: Record<Page, string> = {
     dashboard: "Dashboard",
@@ -186,9 +198,9 @@ export function AppShell({
     "invoice-designer": "Invoice Designer",
     reports: "Reports",
     settings: "Settings",
+    quotations: "Quotations",
   };
 
-  // Close mobile sidebar on route change
   // biome-ignore lint/correctness/useExhaustiveDependencies: setMobileOpen is stable
   useEffect(() => {
     setMobileOpen(false);
@@ -209,7 +221,7 @@ export function AppShell({
         {(!collapsed || isMobile) && (
           <div>
             <div className="font-display font-bold text-sidebar-foreground text-lg leading-tight">
-              Pottikadai
+              {displayName}
             </div>
             <div className="text-xs text-sidebar-foreground/50 font-mono">
               Business Suite
@@ -361,7 +373,7 @@ export function AppShell({
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Bar */}
         <header className="h-14 flex items-center justify-between px-4 md:px-6 border-b border-border bg-card/80 glass flex-shrink-0 z-10">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-1">
             <button
               type="button"
               className="md:hidden p-1.5 rounded-lg hover:bg-muted"
@@ -370,11 +382,19 @@ export function AppShell({
             >
               <Menu className="w-5 h-5" />
             </button>
-            <h1 className="font-display font-semibold text-lg">
+            <h1 className="font-display font-semibold text-lg hidden md:block">
               {pageTitles[currentPage]}
             </h1>
           </div>
-          <div className="flex items-center gap-2">
+
+          {/* Business Name — center */}
+          <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none select-none">
+            <span className="font-display font-bold text-base text-foreground/90 tracking-wide">
+              {displayName}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 flex-1 justify-end">
             <Button
               variant="ghost"
               size="icon"

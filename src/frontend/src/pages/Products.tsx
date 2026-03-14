@@ -77,6 +77,7 @@ const CATEGORIES = [
   "Other",
 ];
 const UNITS = ["pcs", "kg", "g", "litre", "ml", "box", "set", "pair"];
+const GST_RATES = [0, 5, 12, 18, 28];
 
 const emptyProduct = (): Omit<Product, "id"> => ({
   name: "",
@@ -88,6 +89,7 @@ const emptyProduct = (): Omit<Product, "id"> => ({
   stockQty: BigInt(0),
   lowStockThreshold: BigInt(5),
   isActive: true,
+  gstRate: 0,
 });
 
 export function Products() {
@@ -245,6 +247,7 @@ export function Products() {
                   <TableHead className="hidden lg:table-cell">
                     Purchase Price
                   </TableHead>
+                  <TableHead className="hidden md:table-cell">GST</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -294,6 +297,19 @@ export function Products() {
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-muted-foreground">
                         {fmt(p.purchasePrice)}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-xs font-mono",
+                            p.gstRate === 0
+                              ? "text-muted-foreground"
+                              : "text-primary border-primary/30",
+                          )}
+                        >
+                          {p.gstRate}%
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge variant={p.isActive ? "default" : "secondary"}>
@@ -420,6 +436,26 @@ export function Products() {
                         {CATEGORIES.map((c) => (
                           <SelectItem key={c} value={c}>
                             {c}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>GST Rate</Label>
+                    <Select
+                      value={String(form.gstRate)}
+                      onValueChange={(v) =>
+                        setForm((f) => ({ ...f, gstRate: Number(v) }))
+                      }
+                    >
+                      <SelectTrigger data-ocid="products.gst.select">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {GST_RATES.map((r) => (
+                          <SelectItem key={r} value={String(r)}>
+                            {r}%
                           </SelectItem>
                         ))}
                       </SelectContent>

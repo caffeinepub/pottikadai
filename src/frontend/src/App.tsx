@@ -8,6 +8,7 @@ import { AppShell } from "./components/layout/AppShell";
 import type { Page } from "./components/layout/AppShell";
 import { useActor } from "./hooks/useActor";
 import { useAppSession } from "./hooks/useAppSession";
+import { useBusinessProfile } from "./hooks/useQueries";
 import { Accounting } from "./pages/Accounting";
 import { Dashboard } from "./pages/Dashboard";
 import { Expenses } from "./pages/Expenses";
@@ -17,6 +18,7 @@ import { POS } from "./pages/POS";
 import { Parties } from "./pages/Parties";
 import { Products } from "./pages/Products";
 import { Purchase } from "./pages/Purchase";
+import { Quotations } from "./pages/Quotations";
 import { Reports } from "./pages/Reports";
 import { Sales } from "./pages/Sales";
 import { Settings } from "./pages/Settings";
@@ -27,6 +29,7 @@ function AppContent() {
 
   const { session, logout } = useAppSession();
   const { isFetching: actorFetching } = useActor();
+  const { data: businessProfile } = useBusinessProfile();
 
   const [currentPage, setCurrentPage] = useState<Page>("dashboard");
 
@@ -44,6 +47,7 @@ function AppContent() {
       "invoice-designer",
       "reports",
       "settings",
+      "quotations",
     ];
     if (validPages.includes(hash as Page)) setCurrentPage(hash as Page);
     const handler = () => {
@@ -106,6 +110,7 @@ function AppContent() {
         AppRole.Auditor,
       ],
       settings: [AppRole.Admin],
+      quotations: [AppRole.Admin, AppRole.Manager, AppRole.Salesman],
     };
     if (restricted[currentPage]?.includes(role)) return currentPage;
     return "dashboard";
@@ -124,6 +129,7 @@ function AppContent() {
     "invoice-designer": <InvoiceDesigner />,
     reports: <Reports />,
     settings: <Settings />,
+    quotations: <Quotations />,
   };
 
   return (
@@ -134,6 +140,7 @@ function AppContent() {
       isDark={isDark}
       onToggleTheme={toggleTheme}
       onLogout={handleLogout}
+      businessName={businessProfile?.businessName}
     >
       <ErrorBoundary>{pageComponents[safePage]}</ErrorBoundary>
     </AppShell>

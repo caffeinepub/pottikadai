@@ -14,7 +14,31 @@ export type AppRole = { 'Auditor' : null } |
   { 'Admin' : null } |
   { 'Manager' : null } |
   { 'Salesman' : null };
-export interface AppUser { 'username' : string, 'name' : string, 'appRole' : AppRole }
+export interface BusinessProfile {
+  'bankAccounts' : Array<
+    {
+      'id' : string,
+      'ifsc' : string,
+      'bankName' : string,
+      'accountNumber' : string,
+      'accountHolder' : string,
+    }
+  >,
+  'gstNumber' : string,
+  'businessName' : string,
+  'email' : string,
+  'logoUrl' : string,
+  'upiIds' : Array<
+    {
+      'id' : string,
+      'upiLabel' : string,
+      'isDefault' : boolean,
+      'upiId' : string,
+    }
+  >,
+  'address' : string,
+  'phone' : string,
+}
 export interface CreditNote {
   'id' : string,
   'linkedInvoiceId' : string,
@@ -78,6 +102,7 @@ export interface Product {
   'unit' : string,
   'isActive' : boolean,
   'category' : string,
+  'gstRate' : number,
   'salePrice' : number,
 }
 export interface PurchaseBill {
@@ -92,6 +117,25 @@ export interface PurchaseBill {
   'paidAmount' : number,
   'partyId' : string,
   'subtotal' : number,
+}
+export interface Quotation {
+  'id' : string,
+  'tax' : number,
+  'status' : string,
+  'total' : number,
+  'date' : Time,
+  'createdBy' : string,
+  'notes' : string,
+  'quotationNumber' : string,
+  'items' : Array<QuotationItem>,
+  'partyId' : string,
+  'subtotal' : number,
+}
+export interface QuotationItem {
+  'qty' : bigint,
+  'productId' : string,
+  'discount' : number,
+  'price' : number,
 }
 export interface SaleInvoice {
   'id' : string,
@@ -114,7 +158,6 @@ export interface SaleInvoiceItem {
   'price' : number,
 }
 export type Time = bigint;
-export interface UserProfile { 'appRole' : AppRole, 'name' : string }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
@@ -147,8 +190,10 @@ export interface _SERVICE {
   '_caffeineStorageUpdateGatewayPrincipals' : ActorMethod<[], undefined>,
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'changeAppUserPassword' : ActorMethod<[string, string, string], undefined>,
   'clearData' : ActorMethod<[], undefined>,
   'closePOSSession' : ActorMethod<[string, number], undefined>,
+  'createAppUser' : ActorMethod<[string, string, string, AppRole], undefined>,
   'createCreditNote' : ActorMethod<[CreditNote], undefined>,
   'createDebitNote' : ActorMethod<[DebitNote], undefined>,
   'createExpense' : ActorMethod<[Expense], undefined>,
@@ -156,12 +201,15 @@ export interface _SERVICE {
   'createParty' : ActorMethod<[Party], undefined>,
   'createProduct' : ActorMethod<[Product], undefined>,
   'createPurchaseBill' : ActorMethod<[PurchaseBill], undefined>,
+  'createQuotation' : ActorMethod<[Quotation], undefined>,
   'createSaleInvoice' : ActorMethod<[SaleInvoice], undefined>,
+  'deleteAppUser' : ActorMethod<[string], undefined>,
   'deleteParty' : ActorMethod<[string], undefined>,
   'deleteProduct' : ActorMethod<[string], undefined>,
-  'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
+  'getBusinessProfile' : ActorMethod<[], BusinessProfile>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getCurrentPOSSession' : ActorMethod<[], [] | [POSSession]>,
+  'getDailyQuotationCount' : ActorMethod<[string], bigint>,
   'getDailySalesSummary' : ActorMethod<
     [Time],
     { 'invoiceCount' : bigint, 'totalSales' : number }
@@ -195,20 +243,18 @@ export interface _SERVICE {
     }
   >,
   'getPurchaseBill' : ActorMethod<[string], [] | [PurchaseBill]>,
+  'getQuotation' : ActorMethod<[string], [] | [Quotation]>,
   'getSaleInvoice' : ActorMethod<[string], SaleInvoice>,
   'getSalesSummary' : ActorMethod<
     [Time, Time],
     { 'invoiceCount' : bigint, 'totalSales' : number }
   >,
-  'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
-  'changeAppUserPassword' : ActorMethod<[string, string, string], boolean>,
-  'createAppUser' : ActorMethod<[string, string, string, AppRole], boolean>,
-  'deleteAppUser' : ActorMethod<[string], boolean>,
   'isFirstRun' : ActorMethod<[], boolean>,
-  'listAppUsers' : ActorMethod<[], Array<AppUser>>,
-  'loginWithPassword' : ActorMethod<[string, string], [] | [{ 'name' : string, 'appRole' : AppRole }]>,
-  'updateAppUser' : ActorMethod<[string, string, AppRole], boolean>,
+  'listAppUsers' : ActorMethod<
+    [],
+    Array<{ 'username' : string, 'appRole' : AppRole, 'name' : string }>
+  >,
   'listCreditNotes' : ActorMethod<[], Array<CreditNote>>,
   'listDebitNotes' : ActorMethod<[], Array<DebitNote>>,
   'listExpenses' : ActorMethod<[], Array<Expense>>,
@@ -218,16 +264,23 @@ export interface _SERVICE {
   'listProducts' : ActorMethod<[], Array<Product>>,
   'listPurchaseBills' : ActorMethod<[], Array<PurchaseBill>>,
   'listPurchaseBillsByParty' : ActorMethod<[string], Array<PurchaseBill>>,
+  'listQuotations' : ActorMethod<[], Array<Quotation>>,
   'listSaleInvoices' : ActorMethod<[], Array<SaleInvoice>>,
   'listSaleInvoicesByParty' : ActorMethod<[string], Array<SaleInvoice>>,
+  'loginWithPassword' : ActorMethod<
+    [string, string],
+    [] | [{ 'appRole' : AppRole, 'name' : string }]
+  >,
   'openPOSSession' : ActorMethod<[POSSession], undefined>,
-  'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'saveBusinessProfile' : ActorMethod<[BusinessProfile], undefined>,
   'setDefaultTemplate' : ActorMethod<[string], undefined>,
+  'updateAppUser' : ActorMethod<[string, string, AppRole], undefined>,
   'updateBalance' : ActorMethod<[string, number], undefined>,
   'updateInvoiceTemplate' : ActorMethod<[InvoiceTemplate], undefined>,
   'updateParty' : ActorMethod<[Party], undefined>,
   'updateProduct' : ActorMethod<[Product], undefined>,
   'updatePurchaseBill' : ActorMethod<[PurchaseBill], undefined>,
+  'updateQuotation' : ActorMethod<[Quotation], undefined>,
   'updateSaleInvoice' : ActorMethod<[SaleInvoice], undefined>,
   'updateStock' : ActorMethod<[string, bigint], undefined>,
 }
